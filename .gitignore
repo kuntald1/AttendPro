@@ -1,0 +1,29 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.egg-info/
+
+# Node
+node_modules/
+frontend/node_modules/
+dist/
+build/
+
+# Docker volumes
+postgres_data/
+deepface_models/
+
+# PDF payslips (generated files)
+backend/app/payslips/
+*.pdf
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
