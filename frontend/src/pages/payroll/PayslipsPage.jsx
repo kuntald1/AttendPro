@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:8002";
+const API = process.env.REACT_APP_API_URL || "";
 
 const MONTHS = [
   "January","February","March","April","May","June",

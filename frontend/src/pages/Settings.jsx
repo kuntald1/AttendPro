@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 const tabs = ['General', 'Offices & Geofencing', 'Kiosk Devices', 'Departments', 'Shifts', 'Holidays', 'Leave Types', 'Email & Notifications', 'Overtime']
 
 function EmailSettings() {
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:8002'
+  const API = import.meta.env.VITE_API_URL || ''
   const authHeader = () => {
     const token = localStorage.getItem('token')
     return { headers: { Authorization: `Bearer ${token}` } }
@@ -248,7 +248,7 @@ function EmailSettings() {
 }
 
 function OvertimeSettings() {
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:8002'
+  const API = import.meta.env.VITE_API_URL || ''
   const token = () => localStorage.getItem('token')
   const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` })
 
