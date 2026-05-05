@@ -41,6 +41,12 @@ class SettingsUpdate(BaseModel):
     smtp_password: Optional[str] = None
     smtp_from_name: Optional[str] = None
     admin_email: Optional[str] = None
+    ot_enabled: Optional[bool] = None
+    ot_weekday_rate: Optional[float] = None
+    ot_weekend_rate: Optional[float] = None
+    ot_basis: Optional[str] = None
+    ot_min_minutes: Optional[int] = None
+    ot_max_hours: Optional[float] = None
 
 class GeofencingUpdate(BaseModel):
     geofencing_enabled: bool = False
@@ -102,6 +108,12 @@ async def get_settings(db: AsyncSession = Depends(get_db), _=Depends(get_current
         "smtp_password": "●●●●●●●●" if settings.smtp_password else "",
         "smtp_from_name": settings.smtp_from_name or "AttendPro System",
         "admin_email": settings.admin_email or "",
+        "ot_enabled": settings.ot_enabled or False,
+        "ot_weekday_rate": settings.ot_weekday_rate or 1.5,
+        "ot_weekend_rate": settings.ot_weekend_rate or 2.0,
+        "ot_basis": settings.ot_basis or "basic",
+        "ot_min_minutes": settings.ot_min_minutes or 30,
+        "ot_max_hours": settings.ot_max_hours or 4.0,
     }
 
 
@@ -132,6 +144,12 @@ async def update_settings(data: SettingsUpdate, db: AsyncSession = Depends(get_d
     if data.smtp_password is not None and data.smtp_password != "●●●●●●●●" and data.smtp_password.strip(): settings.smtp_password = data.smtp_password.replace(" ", "")
     if data.smtp_from_name is not None: settings.smtp_from_name = data.smtp_from_name
     if data.admin_email is not None: settings.admin_email = data.admin_email
+    if data.ot_enabled is not None: settings.ot_enabled = data.ot_enabled
+    if data.ot_weekday_rate is not None: settings.ot_weekday_rate = data.ot_weekday_rate
+    if data.ot_weekend_rate is not None: settings.ot_weekend_rate = data.ot_weekend_rate
+    if data.ot_basis is not None: settings.ot_basis = data.ot_basis
+    if data.ot_min_minutes is not None: settings.ot_min_minutes = data.ot_min_minutes
+    if data.ot_max_hours is not None: settings.ot_max_hours = data.ot_max_hours
     await db.flush()
     await db.commit()
     return {"success": True}

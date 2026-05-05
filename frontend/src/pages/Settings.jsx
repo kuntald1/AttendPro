@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { settingsAPI, departmentAPI, shiftAPI, leaveAPI } from '../api'
 import toast from 'react-hot-toast'
 
-const tabs = ['General', 'Offices & Geofencing', 'Kiosk Devices', 'Departments', 'Shifts', 'Holidays', 'Leave Types', 'Email & Notifications']
+const tabs = ['General', 'Offices & Geofencing', 'Kiosk Devices', 'Departments', 'Shifts', 'Holidays', 'Leave Types', 'Email & Notifications', 'Overtime']
 
 function EmailSettings() {
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8002'
@@ -247,6 +247,155 @@ function EmailSettings() {
   )
 }
 
+function OvertimeSettings() {
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:8002'
+  const token = () => localStorage.getItem('token')
+  const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` })
+
+  const [form, setForm] = useState({
+    ot_enabled: false,
+    ot_weekday_rate: 1.5,
+    ot_weekend_rate: 2.0,
+    ot_basis: 'basic',
+    ot_min_minutes: 30,
+    ot_max_hours: 4.0,
+  })
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetch(`${API}/api/settings/`, { headers: { Authorization: `Bearer ${token()}` } })
+      .then(r => r.json())
+      .then(d => setForm(f => ({
+        ...f,
+        ot_enabled: d.ot_enabled ?? false,
+        ot_weekday_rate: d.ot_weekday_rate ?? 1.5,
+        ot_weekend_rate: d.ot_weekend_rate ?? 2.0,
+        ot_basis: d.ot_basis ?? 'basic',
+        ot_min_minutes: d.ot_min_minutes ?? 30,
+        ot_max_hours: d.ot_max_hours ?? 4.0,
+      })))
+      .catch(() => {})
+  }, [])
+
+  const save = async () => {
+    setLoading(true)
+    try {
+      await fetch(`${API}/api/settings/`, { method: 'PATCH', headers: headers(), body: JSON.stringify(form) })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch { alert('Failed to save') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Toggle */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="font-semibold text-gray-900">⏱ Overtime Tracking</h2>
+            <p className="text-sm text-gray-500 mt-1">Automatically detect and calculate overtime when employees work beyond shift hours.</p>
+          </div>
+          <button onClick={() => setForm(f => ({ ...f, ot_enabled: !f.ot_enabled }))}
+            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${form.ot_enabled ? 'bg-blue-600' : 'bg-gray-300'}`}>
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${form.ot_enabled ? 'translate-x-8' : 'translate-x-1'}`} />
+          </button>
+        </div>
+        {!form.ot_enabled && (
+          <div className="mt-3 bg-gray-50 rounded-lg p-3 text-sm text-gray-400 text-center">
+            Enable overtime to configure settings below
+          </div>
+        )}
+      </div>
+
+      {/* OT Config */}
+      {form.ot_enabled && (
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-5">
+          {saved && <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">✓ Overtime settings saved!</div>}
+
+          <h3 className="font-medium text-gray-800">Overtime Configuration</h3>
+
+          {/* Rates */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Weekday OT Rate (multiplier)</label>
+              <input type="number" step="0.5" min="1" max="5"
+                value={form.ot_weekday_rate}
+                onChange={e => setForm(f => ({ ...f, ot_weekday_rate: parseFloat(e.target.value) }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-1">e.g. 1.5 = 1.5× hourly rate</p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Weekend OT Rate (multiplier)</label>
+              <input type="number" step="0.5" min="1" max="5"
+                value={form.ot_weekend_rate}
+                onChange={e => setForm(f => ({ ...f, ot_weekend_rate: parseFloat(e.target.value) }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-1">e.g. 2.0 = 2× hourly rate on Sat/Sun</p>
+            </div>
+          </div>
+
+          {/* Basis */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-2">Hourly Rate Based On</label>
+            <div className="flex gap-3">
+              {[['basic', 'Basic Salary Only', 'OT calculated on basic component only'],
+                ['gross', 'Gross Salary', 'OT calculated on total gross earnings']].map(([val, label, desc]) => (
+                <label key={val} className={`flex-1 flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-colors ${form.ot_basis === val ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <input type="radio" name="ot_basis" value={val} checked={form.ot_basis === val}
+                    onChange={() => setForm(f => ({ ...f, ot_basis: val }))} className="mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Thresholds */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Minimum OT Threshold (minutes)</label>
+              <input type="number" min="1" max="120"
+                value={form.ot_min_minutes}
+                onChange={e => setForm(f => ({ ...f, ot_min_minutes: parseInt(e.target.value) }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-1">Don't count OT less than this</p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Maximum OT per Day (hours)</label>
+              <input type="number" step="0.5" min="0.5" max="12"
+                value={form.ot_max_hours}
+                onChange={e => setForm(f => ({ ...f, ot_max_hours: parseFloat(e.target.value) }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-1">Cap OT at this many hours/day</p>
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
+            <p className="font-semibold text-blue-800 mb-2">📊 Current Configuration Preview</p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
+              <p>Weekday: <strong>{form.ot_weekday_rate}× hourly rate</strong></p>
+              <p>Weekend: <strong>{form.ot_weekend_rate}× hourly rate</strong></p>
+              <p>Based on: <strong>{form.ot_basis === 'basic' ? 'Basic Salary' : 'Gross Salary'}</strong></p>
+              <p>Min threshold: <strong>{form.ot_min_minutes} min</strong></p>
+              <p>Max per day: <strong>{form.ot_max_hours} hours</strong></p>
+            </div>
+          </div>
+
+          <button onClick={save} disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+            {loading ? 'Saving…' : '💾 Save Overtime Settings'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('General')
   return (
@@ -271,6 +420,7 @@ export default function Settings() {
       {activeTab === 'Holidays' && <HolidaySettings />}
       {activeTab === 'Leave Types' && <LeaveTypeSettings />}
       {activeTab === 'Email & Notifications' && <EmailSettings />}
+      {activeTab === 'Overtime' && <OvertimeSettings />}
     </div>
   )
 }

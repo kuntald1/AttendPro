@@ -22,7 +22,7 @@ import ManualAttendance from './pages/ManualAttendance'
 import SalaryStructurePage from './pages/payroll/SalaryStructurePage'
 import PayslipsPage from './pages/payroll/PayslipsPage'
 import NotificationsPage from './pages/payroll/NotificationsPage'
-
+import Overtime from './pages/Overtime'
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30000 } } })
 
@@ -60,6 +60,7 @@ function AppRoutes() {
         <Route path="payroll/salary-structures" element={<SalaryStructurePage />} />
         <Route path="payroll/payslips" element={<PayslipsPage />} />
         <Route path="payroll/notifications" element={<NotificationsPage />} />
+        <Route path="overtime" element={<Overtime />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

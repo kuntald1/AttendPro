@@ -365,6 +365,35 @@ async def _generate_one(db, employee, year, month, working_days, present_days,
             "amount": amt,
         })
 
+    # Add approved OT amount as earning
+    try:
+        from app.models.overtime import OvertimeLog
+        from sqlalchemy import extract as sql_extract
+        # Get employee record (employees.id, not users.id)
+        emp_rec = await db.execute(select(Employee).where(Employee.user_id == employee.id))
+        emp_obj = emp_rec.scalar_one_or_none()
+        if emp_obj:
+            ot_res = await db.execute(
+                select(OvertimeLog).where(
+                    OvertimeLog.employee_id == emp_obj.id,
+                    OvertimeLog.status == "approved",
+                    sql_extract("month", OvertimeLog.date) == month,
+                    sql_extract("year", OvertimeLog.date) == year,
+                )
+            )
+            ot_logs = ot_res.scalars().all()
+            ot_total = round(sum(l.ot_amount for l in ot_logs), 2)
+            if ot_total > 0:
+                earnings += ot_total
+                items_data.append({
+                    "component": "OVERTIME",
+                    "component_type": "EARNING",
+                    "label": f"Overtime Allowance ({sum(l.ot_hours for l in ot_logs):.1f} hrs)",
+                    "amount": ot_total,
+                })
+    except Exception as e:
+        logger.warning(f"Could not fetch OT for payslip: {e}")
+
     ps = Payslip(
         employee_id=employee.id,
         salary_structure_id=ss.id,

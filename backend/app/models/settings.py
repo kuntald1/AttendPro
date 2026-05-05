@@ -28,6 +28,13 @@ class CompanySettings(Base):
     smtp_password = Column(String(500), nullable=True)
     smtp_from_name = Column(String(200), default="AttendPro System")
     admin_email = Column(String(200), nullable=True)
+    # Overtime Settings
+    ot_enabled = Column(Boolean, default=False)
+    ot_weekday_rate = Column(Float, default=1.5)
+    ot_weekend_rate = Column(Float, default=2.0)
+    ot_basis = Column(String(20), default="basic")  # basic or gross
+    ot_min_minutes = Column(Integer, default=30)
+    ot_max_hours = Column(Float, default=4.0)
     # Schedule settings
     absent_alert_time = Column(String(5), default="11:30")   # HH:MM
     daily_summary_time = Column(String(5), default="19:00")  # HH:MM

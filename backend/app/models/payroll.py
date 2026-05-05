@@ -32,7 +32,7 @@ class SalaryComponent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     structure_id = Column(Integer, ForeignKey("salary_structures.id"), nullable=False)
-    component = Column(Enum('BASIC','HRA','TRANSPORT','MEDICAL','SPECIAL_ALLOWANCE','PF','ESI','PROFESSIONAL_TAX','TDS','LOAN','OTHER_EARNING','OTHER_DEDUCTION', name='paycomponent', create_type=False), nullable=False)
+    component = Column(Enum('BASIC','HRA','TRANSPORT','MEDICAL','SPECIAL_ALLOWANCE','PF','ESI','PROFESSIONAL_TAX','TDS','LOAN','OTHER_EARNING','OTHER_DEDUCTION','OVERTIME', name='paycomponent', create_type=False), nullable=False)
     component_type = Column(Enum('EARNING','DEDUCTION', name='componenttype', create_type=False), nullable=False)
     amount = Column(Float, nullable=False, default=0.0)
     is_percentage = Column(Boolean, default=False)
@@ -73,7 +73,7 @@ class PayslipItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     payslip_id = Column(Integer, ForeignKey("payslips.id"), nullable=False)
-    component = Column(Enum('BASIC','HRA','TRANSPORT','MEDICAL','SPECIAL_ALLOWANCE','PF','ESI','PROFESSIONAL_TAX','TDS','LOAN','OTHER_EARNING','OTHER_DEDUCTION', name='paycomponent', create_type=False), nullable=False)
+    component = Column(Enum('BASIC','HRA','TRANSPORT','MEDICAL','SPECIAL_ALLOWANCE','PF','ESI','PROFESSIONAL_TAX','TDS','LOAN','OTHER_EARNING','OTHER_DEDUCTION','OVERTIME', name='paycomponent', create_type=False), nullable=False)
     component_type = Column(Enum('EARNING','DEDUCTION', name='componenttype', create_type=False), nullable=False)
     label = Column(String(100), nullable=False)
     amount = Column(Float, nullable=False)

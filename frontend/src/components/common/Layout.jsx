@@ -10,9 +10,10 @@ const navItems = [
   { to: '/my-attendance', label: 'My Attendance', icon: '📅', roles: ['admin','hr','manager','employee'] },
   { to: '/employees', label: 'Employees', icon: '◈', roles: ['admin','hr'] },
   { to: '/leave', label: 'Leave', icon: '◷', roles: ['admin','hr','manager','employee'] },
-  { to: '/payroll/salary-structures', label: 'Salary Structures', icon: '💰', roles: ['admin','hr'] },
-  { to: '/payroll/payslips', label: 'Payslips', icon: '📄', roles: ['admin','hr','manager','employee'] },
-  { to: '/payroll/notifications', label: 'Notifications', icon: '📧', roles: ['admin'] },
+  { to: '/overtime', label: 'Overtime', icon: '⏱', roles: ['admin','hr','manager','employee'] },
+  { to: '/payroll/salary-structures', label: 'Salary Structures', icon: '🔥', roles: ['admin','hr'] },
+  { to: '/payroll/payslips', label: 'Payslips', icon: '🗒', roles: ['admin','hr','employee'] },
+  { to: '/payroll/notifications', label: 'Notifications', icon: '🔔', roles: ['admin','hr'] },
   { to: '/settings', label: 'Settings', icon: '⚙', roles: ['admin'] },
 ]
 

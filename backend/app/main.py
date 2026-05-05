@@ -9,6 +9,7 @@ from app.routes.settings import router as settings_router
 from app.routes.reports import router as reports_router
 from app.routes.payroll import router as payroll_router
 from app.scheduler import start_scheduler
+from app.routes.overtime import router as overtime_router
 
 
 app = FastAPI(title="AttendPro API", version="1.0.0")
@@ -31,6 +32,7 @@ app.include_router(settings_router)
 app.include_router(reports_router)
 app.include_router(payroll_router)
 app.add_event_handler("startup", start_scheduler)
+app.include_router(overtime_router)
 
 
 @app.on_event("startup")
