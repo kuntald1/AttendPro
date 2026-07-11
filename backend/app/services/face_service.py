@@ -38,6 +38,39 @@ class FaceRecognitionService:
             logger.error(f"Image decode error: {e}")
             return None
 
+    def _generate_embedding_modern(self, img: np.ndarray) -> Optional[list]:
+        """Primary pipeline: YuNet (modern DNN face detector, built into OpenCV)
+        with automatic face alignment via DeepFace, before generating the
+        VGG-Face embedding. Far more tolerant of head tilt, angle, and mixed
+        lighting than the legacy Haar-cascade pipeline below."""
+        try:
+            from deepface import DeepFace
+            results = DeepFace.represent(
+                img_path=img,
+                model_name="VGG-Face",
+                detector_backend="yunet",
+                align=True,
+                enforce_detection=True,
+            )
+            if not results:
+                return None
+            if len(results) > 1:
+                # Multiple faces in frame - use the largest/closest one
+                results = sorted(
+                    results,
+                    key=lambda r: r["facial_area"]["w"] * r["facial_area"]["h"],
+                    reverse=True,
+                )
+            embedding = results[0]["embedding"]
+            logger.info(f"Embedding generated via yunet+align, length: {len(embedding)}")
+            return embedding
+        except ValueError:
+            # DeepFace raises ValueError with enforce_detection=True when no face is found
+            return None
+        except Exception as e:
+            logger.warning(f"Modern detector (yunet) unavailable or errored, will fall back: {e}")
+            return None
+
     def detect_face(self, image: np.ndarray) -> Tuple[bool, Optional[np.ndarray]]:
         try:
             detector = self._load_opencv_detector()
@@ -123,11 +156,20 @@ class FaceRecognitionService:
 
         logger.info(f"Image decoded: shape={img.shape}")
 
+        # Primary path: modern detector + alignment
+        embedding = self._generate_embedding_modern(img)
+        if embedding is not None:
+            return True, embedding, "Face processed successfully"
+
+        # Fallback: legacy Haar-cascade pipeline (e.g. if the YuNet model
+        # weights haven't finished downloading yet, or as a last-resort
+        # second opinion on a difficult frame)
+        logger.info("Modern pipeline found no face, trying legacy Haar-cascade fallback")
         found, face = self.detect_face(img)
         if not found or face is None:
             return False, None, "No face detected. Please look directly at the camera and ensure good lighting."
 
-        logger.info(f"Face cropped: shape={face.shape}")
+        logger.info(f"Face cropped (legacy): shape={face.shape}")
 
         embedding = self.generate_embedding(face)
         if embedding is None:
