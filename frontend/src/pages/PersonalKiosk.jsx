@@ -76,13 +76,21 @@ export default function PersonalKiosk() {
 
   const captureAndRecognize = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || scanning) return
+    const vw = videoRef.current.videoWidth
+    const vh = videoRef.current.videoHeight
+    if (!vw || !vh || videoRef.current.readyState < 2) {
+      // Camera not producing real frames yet (common on mobile during
+      // initial warm-up) - skip this cycle instead of sending an empty capture
+      return
+    }
     setScanning(true)
     try {
       const canvas = canvasRef.current
-      canvas.width = videoRef.current.videoWidth
-      canvas.height = videoRef.current.videoHeight
+      canvas.width = vw
+      canvas.height = vh
       canvas.getContext('2d').drawImage(videoRef.current, 0, 0)
       const image = canvas.toDataURL('image/jpeg', 0.8)
+      if (!image || image === 'data:,') { setScanning(false); return }
       const res = await attendanceAPI.recognizePersonal(image, coordsRef.current?.lat ?? null, coordsRef.current?.lng ?? null)
       const data = res.data
       if (data.success) {

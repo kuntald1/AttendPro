@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import init_db
@@ -11,6 +12,10 @@ from app.routes.payroll import router as payroll_router
 from app.scheduler import start_scheduler
 from app.routes.overtime import router as overtime_router
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
 app = FastAPI(title="AttendPro API", version="1.0.0")
 
