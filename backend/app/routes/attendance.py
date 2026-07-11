@@ -9,6 +9,7 @@ from app.core.security import get_current_user, require_roles
 from app.models.user import Employee, AttendanceLog, StatusEnum, MarkMethodEnum, ScanLog
 from app.schemas.schemas import AttendanceLogOut, ManualAttendanceCreate, DashboardStats
 from app.services.face_service import face_service
+from app.core.shift_utils import get_effective_shift_times, get_effective_work_hours
 
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 
@@ -103,7 +104,8 @@ async def recognize_face(
         if shift:
             from datetime import timedelta
             grace = timedelta(minutes=shift.grace_minutes)
-            shift_start = datetime.combine(today, shift.start_time)
+            eff_start, _ = get_effective_shift_times(shift, today)
+            shift_start = datetime.combine(today, eff_start)
             now_naive = now.replace(tzinfo=None) if now.tzinfo else now
             if now_naive > shift_start + grace:
                 status = StatusEnum.late
@@ -128,7 +130,13 @@ async def recognize_face(
             from app.models.settings import CompanySettings
             cs = (await db.execute(select(CompanySettings).limit(1))).scalar_one_or_none()
             if cs and cs.early_leave_enabled:
-                required_minutes = (cs.work_hours * 60) + cs.lunch_minutes
+                shift_result = await db.execute(
+                    select(Employee).options(selectinload(Employee.shift)).where(Employee.id == best_match.id)
+                )
+                emp_with_shift = shift_result.scalar_one_or_none()
+                emp_shift = emp_with_shift.shift if emp_with_shift else None
+                eff_work_hours = get_effective_work_hours(emp_shift, today)
+                required_minutes = ((eff_work_hours if eff_work_hours else cs.work_hours) * 60) + cs.lunch_minutes
                 cin = log.check_in_time.replace(tzinfo=None) if log.check_in_time.tzinfo else log.check_in_time
                 actual_minutes = (now - cin).total_seconds() / 60
                 if actual_minutes < required_minutes:
@@ -478,7 +486,8 @@ async def recognize_face_personal(
         if shift:
             from datetime import timedelta
             grace = timedelta(minutes=shift.grace_minutes)
-            shift_start = datetime.combine(today, shift.start_time)
+            eff_start, _ = get_effective_shift_times(shift, today)
+            shift_start = datetime.combine(today, eff_start)
             now_naive = now.replace(tzinfo=None) if now.tzinfo else now
             if now_naive > shift_start + grace:
                 status = StatusEnum.late

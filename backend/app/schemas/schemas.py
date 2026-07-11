@@ -50,6 +50,9 @@ class ShiftCreate(BaseModel):
     end_time: time
     working_days: str = "Mon-Fri"
     grace_minutes: int = 15
+    sat_start_time: Optional[time] = None
+    sat_end_time: Optional[time] = None
+    sat_work_hours: Optional[float] = None
 
 class ShiftOut(BaseModel):
     id: int
@@ -58,6 +61,9 @@ class ShiftOut(BaseModel):
     end_time: time
     working_days: str
     grace_minutes: int
+    sat_start_time: Optional[time] = None
+    sat_end_time: Optional[time] = None
+    sat_work_hours: Optional[float] = None
     model_config = {"from_attributes": True}
 
 # ── Employee ───────────────────────────────────────────────────

@@ -55,6 +55,11 @@ class Shift(Base):
     end_time = Column(Time, nullable=False)
     working_days = Column(String(20), default="Mon-Fri")
     grace_minutes = Column(Integer, default=15)
+    # Optional Saturday-specific override. When set, Saturday check-ins/
+    # early-leave use these instead of the regular start/end/work hours.
+    sat_start_time = Column(Time, nullable=True)
+    sat_end_time = Column(Time, nullable=True)
+    sat_work_hours = Column(Float, nullable=True)
     employees = relationship("Employee", back_populates="shift")
 
 class Employee(Base):

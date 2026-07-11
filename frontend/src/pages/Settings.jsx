@@ -875,10 +875,22 @@ function DepartmentSettings() {
 
 function ShiftSettings() {
   const { data: shifts = [], refetch } = useQuery({ queryKey: ['shifts'], queryFn: () => shiftAPI.list().then(r => r.data) })
-  const [form, setForm] = useState({ name: '', start_time: '09:00', end_time: '18:00', grace_minutes: 15, working_days: 'Mon-Fri' })
+  const emptyForm = { name: '', start_time: '09:00', end_time: '18:00', grace_minutes: 15, working_days: 'Mon-Fri' }
+  const [form, setForm] = useState(emptyForm)
+  const [satOverride, setSatOverride] = useState(false)
+  const [satForm, setSatForm] = useState({ sat_start_time: '10:00', sat_end_time: '17:00', sat_work_hours: 6 })
+
   const add = async () => {
     if (!form.name) return
-    try { await shiftAPI.create(form); setForm({ name: '', start_time: '09:00', end_time: '18:00', grace_minutes: 15, working_days: 'Mon-Fri' }); refetch(); toast.success('Shift added') }
+    const payload = satOverride ? { ...form, ...satForm } : form
+    try {
+      await shiftAPI.create(payload)
+      setForm(emptyForm)
+      setSatOverride(false)
+      setSatForm({ sat_start_time: '10:00', sat_end_time: '17:00', sat_work_hours: 6 })
+      refetch()
+      toast.success('Shift added')
+    }
     catch { toast.error('Failed') }
   }
   const del = async (id) => {
@@ -904,6 +916,31 @@ function ShiftSettings() {
           </div>
         ))}
       </div>
+
+      <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+        <input type="checkbox" checked={satOverride} onChange={e => setSatOverride(e.target.checked)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+        <span className="text-sm text-gray-700">Different hours on Saturday</span>
+      </label>
+
+      {satOverride && (
+        <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-blue-50 rounded-lg">
+          {[
+            { label: 'Saturday start time', key: 'sat_start_time', type: 'time' },
+            { label: 'Saturday end time', key: 'sat_end_time', type: 'time' },
+            { label: 'Saturday work hours', key: 'sat_work_hours', type: 'number', placeholder: '6' },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
+              <input type={f.type} value={satForm[f.key]}
+                onChange={e => setSatForm(p => ({ ...p, [f.key]: f.type === 'number' ? parseFloat(e.target.value) : e.target.value }))}
+                placeholder={f.placeholder} step={f.key === 'sat_work_hours' ? '0.5' : undefined}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          ))}
+        </div>
+      )}
+
       <button onClick={add} className="mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">+ Add Shift</button>
       <div className="space-y-2">
         {shifts.map(s => (
@@ -911,6 +948,9 @@ function ShiftSettings() {
             <div>
               <p className="text-sm font-medium text-gray-900">{s.name}</p>
               <p className="text-xs text-gray-500">{s.start_time} – {s.end_time} · {s.working_days} · {s.grace_minutes}min grace</p>
+              {s.sat_start_time && (
+                <p className="text-xs text-blue-600 mt-0.5">Sat: {s.sat_start_time} – {s.sat_end_time} · {s.sat_work_hours}h required</p>
+              )}
             </div>
             <button onClick={() => del(s.id)} className="text-xs text-red-500 hover:text-red-700">Delete</button>
           </div>

@@ -11,6 +11,7 @@ from app.core.security import get_current_user, require_roles
 from app.models.user import Employee, AttendanceLog, Shift
 from app.models.settings import CompanySettings
 from app.models.overtime import OvertimeLog
+from app.core.shift_utils import get_effective_shift_times
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/overtime", tags=["overtime"])
@@ -95,7 +96,9 @@ async def calculate_ot(
             from datetime import timezone, timedelta
             IST = timezone(timedelta(hours=5, minutes=30))
             # Combine date with shift end time in IST, then convert to UTC
-            shift_end_ist = datetime.combine(log_date, shift.end_time).replace(tzinfo=IST)
+            # (uses Saturday-specific end time when the shift has one configured)
+            _, eff_end = get_effective_shift_times(shift, log_date)
+            shift_end_ist = datetime.combine(log_date, eff_end).replace(tzinfo=IST)
             shift_end_utc = shift_end_ist.astimezone(timezone.utc)
 
             # How many minutes after shift end did they checkout?
