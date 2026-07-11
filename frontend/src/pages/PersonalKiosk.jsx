@@ -25,8 +25,13 @@ export default function PersonalKiosk() {
     }
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        setLocationError('')
+        const accuracy = pos.coords.accuracy // meters
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy })
+        if (accuracy > 150) {
+          setLocationError('Your location accuracy is low (±' + Math.round(accuracy) + 'm). Please choose "Precise location" when your browser asks for GPS permission, not "Approximate."')
+        } else {
+          setLocationError('')
+        }
       },
       (err) => {
         setCoords(null)
@@ -157,8 +162,10 @@ export default function PersonalKiosk() {
             <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{cameraReady ? 'Camera Active' : 'Camera Error'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: coords ? '#10b981' : '#f59e0b' }} />
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{coords ? 'Location Locked' : 'Locating…'}</span>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: coords && coords.accuracy <= 150 ? '#10b981' : coords ? '#f59e0b' : '#f59e0b' }} />
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>
+              {coords ? `Location ±${Math.round(coords.accuracy)}m` : 'Locating…'}
+            </span>
           </div>
         </div>
       </div>
