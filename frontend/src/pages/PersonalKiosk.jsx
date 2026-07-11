@@ -15,6 +15,31 @@ export default function PersonalKiosk() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [lastScan, setLastScan] = useState(null)
   const [scanMessage, setScanMessage] = useState('')
+  const [coords, setCoords] = useState(null)
+  const [locationError, setLocationError] = useState('')
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Your browser does not support location access. Attendance may be rejected if this office requires it.')
+      return
+    }
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocationError('')
+      },
+      (err) => {
+        setCoords(null)
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationError('Location access denied. Please allow location permission in your browser and reload this page.')
+        } else {
+          setLocationError('Could not get your location. Please check your GPS/network and try again.')
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [])
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -49,7 +74,7 @@ export default function PersonalKiosk() {
       canvas.height = videoRef.current.videoHeight
       canvas.getContext('2d').drawImage(videoRef.current, 0, 0)
       const image = canvas.toDataURL('image/jpeg', 0.8)
-      const res = await attendanceAPI.recognizePersonal(image, null, null)
+      const res = await attendanceAPI.recognizePersonal(image, coords?.lat ?? null, coords?.lng ?? null)
       const data = res.data
       if (data.success) {
         setResult(data); setScanMessage('')
@@ -66,7 +91,7 @@ export default function PersonalKiosk() {
         resetRef.current = setTimeout(() => setScanMessage(''), 3000)
       }
     } catch {} finally { setScanning(false) }
-  }, [scanning])
+  }, [scanning, coords])
 
   useEffect(() => {
     if (cameraReady) intervalRef.current = setInterval(captureAndRecognize, SCAN_INTERVAL)
@@ -126,11 +151,23 @@ export default function PersonalKiosk() {
           <p style={{ color: 'white', fontSize: 'clamp(16px, 3vw, 26px)', fontWeight: 700, margin: 0 }}>{timeStr}</p>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, margin: 0 }}>{dateStr}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: cameraReady ? '#10b981' : '#ef4444' }} />
-          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{cameraReady ? 'Camera Active' : 'Camera Error'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: cameraReady ? '#10b981' : '#ef4444' }} />
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{cameraReady ? 'Camera Active' : 'Camera Error'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: coords ? '#10b981' : '#f59e0b' }} />
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{coords ? 'Location Locked' : 'Locating…'}</span>
+          </div>
         </div>
       </div>
+
+      {locationError && (
+        <div style={{ background: '#7f1d1d', color: '#fca5a5', fontSize: 12, textAlign: 'center', padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          ⚠ {locationError}
+        </div>
+      )}
 
       {/* Main - responsive flex-wrap */}
       <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '16px', overflow: 'auto' }}>
