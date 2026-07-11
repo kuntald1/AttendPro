@@ -95,7 +95,18 @@ export default function PersonalKiosk() {
         clearTimeout(resetRef.current)
         resetRef.current = setTimeout(() => setScanMessage(''), 3000)
       }
-    } catch {} finally { setScanning(false) }
+    } catch (err) {
+      console.error('Kiosk scan error:', err)
+      const status = err?.response?.status
+      let msg = 'Connection error. Retrying…'
+      if (status === 401 || status === 403) msg = 'Session expired or unauthorized. Please reload and log in again.'
+      else if (status === 500) msg = 'Server error while checking attendance. Please contact your admin.'
+      else if (err?.code === 'ECONNABORTED') msg = 'Request timed out. Check your internet connection.'
+      else if (!err?.response) msg = 'Cannot reach the server. Check your internet connection.'
+      setScanMessage(msg)
+      clearTimeout(resetRef.current)
+      resetRef.current = setTimeout(() => setScanMessage(''), 4000)
+    } finally { setScanning(false) }
   }, [scanning, coords])
 
   useEffect(() => {
@@ -183,7 +194,10 @@ export default function PersonalKiosk() {
           <div style={{ width: '100%', paddingTop: '75%', position: 'relative', borderRadius: 16, overflow: 'hidden', border: `2px solid ${scanning ? '#3b82f6' : 'rgba(255,255,255,0.1)'}`, background: '#111' }}>
             <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
             <canvas ref={canvasRef} style={{ display: 'none' }} />
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '36%', height: '55%', border: `2px solid ${scanning ? '#3b82f6' : 'rgba(255,255,255,0.25)'}`, borderRadius: '50%', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: '46%', left: '50%', transform: 'translate(-50%, -50%)', width: '58%', height: '78%', border: `3px solid ${scanning ? '#3b82f6' : 'rgba(255,255,255,0.35)'}`, borderRadius: '50% / 60%', pointerEvents: 'none', transition: 'border-color 0.2s' }} />
+            <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.7)', fontSize: 11, padding: '4px 12px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+              Fit your face inside the outline
+            </div>
             {scanMessage && (
               <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.85)', color: '#fbbf24', fontSize: 12, padding: '6px 16px', borderRadius: 20, whiteSpace: 'nowrap', border: '1px solid rgba(251,191,36,0.3)', maxWidth: '90%', textAlign: 'center' }}>
                 ⚠ {scanMessage}
