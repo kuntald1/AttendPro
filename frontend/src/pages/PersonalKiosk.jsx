@@ -59,7 +59,7 @@ export default function PersonalKiosk() {
     const startCam = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720, facingMode: 'user' }
+          video: { width: { ideal: 960, max: 1280 }, height: { ideal: 720, max: 960 }, facingMode: 'user' }
         })
         streamRef.current = stream
         if (videoRef.current) videoRef.current.srcObject = stream

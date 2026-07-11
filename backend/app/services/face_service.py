@@ -47,6 +47,8 @@ class FaceRecognitionService:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             gray = cv2.equalizeHist(gray)
 
+            # First pass: stricter params (fewer false positives, works well on
+            # stable laptop webcam frames)
             faces = detector.detectMultiScale(
                 gray,
                 scaleFactor=1.1,
@@ -56,8 +58,25 @@ class FaceRecognitionService:
             )
 
             if len(faces) == 0:
+                # Fallback pass: relaxed params to handle noisier/blurrier frames
+                # (common on handheld mobile cameras with motion shake and
+                # aggressive sensor processing)
+                logger.info("Strict face detection found nothing, retrying with relaxed params")
+                faces = detector.detectMultiScale(
+                    gray,
+                    scaleFactor=1.05,
+                    minNeighbors=4,
+                    minSize=(60, 60),
+                    flags=cv2.CASCADE_SCALE_IMAGE
+                )
+
+            if len(faces) == 0:
                 logger.info("No face detected by OpenCV")
                 return False, None
+
+            # If multiple faces found, use the largest (closest/most prominent)
+            if len(faces) > 1:
+                faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
 
             x, y, w, h = faces[0]
             logger.info(f"Face detected at x={x} y={y} w={w} h={h}")
