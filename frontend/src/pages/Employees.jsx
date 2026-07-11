@@ -10,6 +10,8 @@ export default function Employees() {
   const [editEmp, setEditEmp] = useState(null)
   const [editForm, setEditForm] = useState({})
   const [faceEmpId, setFaceEmpId] = useState(null)
+  const [faceShots, setFaceShots] = useState([])
+  const TOTAL_FACE_SHOTS = 3
   const [officeEmpId, setOfficeEmpId] = useState(null)
   const [officeForm, setOfficeForm] = useState({ office_id: '', kiosk_access: false })
   const videoRef = useRef(null)
@@ -176,6 +178,7 @@ export default function Employees() {
 
   const startFaceReg = async (empId) => {
     setFaceEmpId(empId)
+    setFaceShots([])
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       streamRef.current = stream
@@ -189,17 +192,30 @@ export default function Employees() {
     canvas.width = videoRef.current.videoWidth
     canvas.height = videoRef.current.videoHeight
     canvas.getContext('2d').drawImage(videoRef.current, 0, 0)
-    const image = canvas.toDataURL('image/jpeg', 0.8)
+    const image = canvas.toDataURL('image/jpeg', 0.85)
+    const newShots = [...faceShots, image]
+    setFaceShots(newShots)
+
+    if (newShots.length < TOTAL_FACE_SHOTS) {
+      toast.success(`Shot ${newShots.length} of ${TOTAL_FACE_SHOTS} captured — shift position slightly for the next one`)
+      return
+    }
+
     try {
-      await employeeAPI.registerFace(faceEmpId, image)
-      toast.success('Face registered successfully!')
-      qc.invalidateQueries(['employees'])
+      const res = await employeeAPI.registerFace(faceEmpId, newShots)
+      if (res.data?.success === false) {
+        toast.error(res.data.message || 'Face registration failed')
+      } else {
+        toast.success(res.data?.message || 'Face registered successfully!')
+        qc.invalidateQueries(['employees'])
+      }
     } catch { toast.error('Face registration failed') }
     streamRef.current?.getTracks().forEach(t => t.stop())
     setFaceEmpId(null)
+    setFaceShots([])
   }
 
-  const cancelFace = () => { streamRef.current?.getTracks().forEach(t => t.stop()); setFaceEmpId(null) }
+  const cancelFace = () => { streamRef.current?.getTracks().forEach(t => t.stop()); setFaceEmpId(null); setFaceShots([]) }
 
   const openOfficeModal = async (emp) => {
     setOfficeEmpId(emp.id)
@@ -252,11 +268,25 @@ export default function Employees() {
       {faceEmpId && (
         <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 shadow-xl" style={{width: '520px', maxWidth: '95vw'}}>
-            <h3 className="font-semibold text-gray-900 mb-3">Register Face</h3>
-            <p className="text-xs text-gray-500 mb-3">Look directly at the camera then click Capture.</p>
+            <h3 className="font-semibold text-gray-900 mb-1">Register Face</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              We'll take {TOTAL_FACE_SHOTS} photos for a more reliable match — shift your position or lighting slightly between shots. Shot {Math.min(faceShots.length + 1, TOTAL_FACE_SHOTS)} of {TOTAL_FACE_SHOTS}.
+            </p>
             <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-lg bg-gray-900 aspect-video mb-3 object-cover" />
+            {faceShots.length > 0 && (
+              <div className="flex gap-2 mb-3">
+                {faceShots.map((shot, i) => (
+                  <img key={i} src={shot} alt={`Shot ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
+                ))}
+                {Array.from({ length: TOTAL_FACE_SHOTS - faceShots.length }).map((_, i) => (
+                  <div key={`empty-${i}`} className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-200" />
+                ))}
+              </div>
+            )}
             <div className="flex gap-2">
-              <button onClick={captureFace} className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700">Capture & Register</button>
+              <button onClick={captureFace} className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700">
+                {faceShots.length + 1 < TOTAL_FACE_SHOTS ? `Capture Shot ${faceShots.length + 1}` : 'Capture Final Shot & Register'}
+              </button>
               <button onClick={cancelFace} className="px-4 text-gray-600 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
             </div>
           </div>

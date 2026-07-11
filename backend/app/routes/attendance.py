@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date, datetime
 import logging
+import numpy as np
 from app.core.database import get_db
 from app.core.security import get_current_user, require_roles
 from app.models.user import Employee, AttendanceLog, StatusEnum, MarkMethodEnum, ScanLog
@@ -28,20 +29,46 @@ async def register_face(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    image_data = payload.get("image")
-    if not image_data:
+    # Accept either multiple shots ("images": [...]) for a more robust
+    # averaged reference, or a single legacy "image" for backward compat.
+    images = payload.get("images")
+    if not images:
+        single = payload.get("image")
+        images = [single] if single else []
+    if not images:
         raise HTTPException(status_code=400, detail="No image provided")
 
-    success, embedding, msg = face_service.process_frame(image_data)
-    if not success:
-        return {"success": False, "message": msg}
+    embeddings = []
+    failures = []
+    for idx, image_data in enumerate(images):
+        success, embedding, msg = face_service.process_frame(image_data)
+        if success:
+            embeddings.append(embedding)
+        else:
+            failures.append(f"Shot {idx + 1}: {msg}")
 
-    emp.face_embedding = embedding
+    if not embeddings:
+        return {
+            "success": False,
+            "message": "Could not detect a face in any of the captured photos. " + "; ".join(failures),
+        }
+
+    if len(embeddings) < len(images):
+        logger.warning(
+            f"Face registration for emp {emp_id}: only {len(embeddings)}/{len(images)} shots usable"
+        )
+
+    # Average across all usable shots - makes the stored reference more
+    # robust to a single shot's lighting/angle/background quirks
+    avg_embedding = np.mean(np.array(embeddings), axis=0).tolist()
+
+    emp.face_embedding = avg_embedding
     emp.face_registered = True
     await db.flush()
     await db.commit()
 
-    return {"success": True, "message": f"Face registered for {emp.full_name}"}
+    quality_note = f" ({len(embeddings)}/{len(images)} shots used)" if len(images) > 1 else ""
+    return {"success": True, "message": f"Face registered for {emp.full_name}{quality_note}"}
 
 
 @router.post("/face/recognize")

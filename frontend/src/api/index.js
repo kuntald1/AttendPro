@@ -33,7 +33,7 @@ export const employeeAPI = {
   create: (data) => api.post('/api/employees/', data),
   update: (id, data) => api.patch(`/api/employees/${id}`, data),
   delete: (id) => api.delete(`/api/employees/${id}`),
-  registerFace: (id, image) => api.post(`/api/attendance/face/register/${id}`, { image }),
+  registerFace: (id, images) => api.post(`/api/attendance/face/register/${id}`, { images }),
   toggleExemptEarlyLeave: (id, exempt) => api.patch(`/api/employees/${id}/exempt-early-leave`, { exempt }),
 }
 
