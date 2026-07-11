@@ -10,7 +10,7 @@ from app.models.user import LeaveRequest, LeaveType, Department, Shift, Employee
 from app.models.settings import CompanySettings
 from app.schemas.schemas import (
     LeaveRequestCreate, LeaveRequestOut, LeaveReviewRequest, LeaveTypeOut,
-    DepartmentCreate, DepartmentOut, ShiftCreate, ShiftOut
+    DepartmentCreate, DepartmentOut, ShiftCreate, ShiftUpdate, ShiftOut
 )
 import logging
 
@@ -538,6 +538,32 @@ async def create_shift(
 ):
     shift = Shift(**data.model_dump())
     db.add(shift)
+    await db.flush()
+    await db.commit()
+    await db.refresh(shift)
+    return shift
+
+@shift_router.patch("/{shift_id}", response_model=ShiftOut)
+async def update_shift(
+    shift_id: int,
+    data: ShiftUpdate,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_roles("admin", "hr"))
+):
+    result = await db.execute(select(Shift).where(Shift.id == shift_id))
+    shift = result.scalar_one_or_none()
+    if not shift:
+        raise HTTPException(status_code=404, detail="Shift not found")
+
+    if data.clear_sat_override:
+        shift.sat_start_time = None
+        shift.sat_end_time = None
+        shift.sat_work_hours = None
+
+    update_fields = data.model_dump(exclude={"clear_sat_override"}, exclude_none=True)
+    for key, value in update_fields.items():
+        setattr(shift, key, value)
+
     await db.flush()
     await db.commit()
     await db.refresh(shift)

@@ -54,6 +54,17 @@ class ShiftCreate(BaseModel):
     sat_end_time: Optional[time] = None
     sat_work_hours: Optional[float] = None
 
+class ShiftUpdate(BaseModel):
+    name: Optional[str] = None
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+    working_days: Optional[str] = None
+    grace_minutes: Optional[int] = None
+    sat_start_time: Optional[time] = None
+    sat_end_time: Optional[time] = None
+    sat_work_hours: Optional[float] = None
+    clear_sat_override: bool = False  # explicit flag to remove a Saturday override
+
 class ShiftOut(BaseModel):
     id: int
     name: str

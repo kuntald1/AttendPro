@@ -66,6 +66,7 @@ export const departmentAPI = {
 export const shiftAPI = {
   list: () => api.get('/api/shifts/'),
   create: (data) => api.post('/api/shifts/', data),
+  update: (id, data) => api.patch(`/api/shifts/${id}`, data),
   delete: (id) => api.delete(`/api/shifts/${id}`),
 }
 

@@ -876,30 +876,67 @@ function DepartmentSettings() {
 function ShiftSettings() {
   const { data: shifts = [], refetch } = useQuery({ queryKey: ['shifts'], queryFn: () => shiftAPI.list().then(r => r.data) })
   const emptyForm = { name: '', start_time: '09:00', end_time: '18:00', grace_minutes: 15, working_days: 'Mon-Fri' }
+  const emptySatForm = { sat_start_time: '10:00', sat_end_time: '17:00', sat_work_hours: 6 }
   const [form, setForm] = useState(emptyForm)
   const [satOverride, setSatOverride] = useState(false)
-  const [satForm, setSatForm] = useState({ sat_start_time: '10:00', sat_end_time: '17:00', sat_work_hours: 6 })
+  const [satForm, setSatForm] = useState(emptySatForm)
+  const [editingId, setEditingId] = useState(null)
 
-  const add = async () => {
-    if (!form.name) return
-    const payload = satOverride ? { ...form, ...satForm } : form
-    try {
-      await shiftAPI.create(payload)
-      setForm(emptyForm)
+  const resetForm = () => {
+    setForm(emptyForm)
+    setSatOverride(false)
+    setSatForm(emptySatForm)
+    setEditingId(null)
+  }
+
+  const startEdit = (s) => {
+    setEditingId(s.id)
+    setForm({
+      name: s.name,
+      start_time: s.start_time?.slice(0, 5) || '09:00',
+      end_time: s.end_time?.slice(0, 5) || '18:00',
+      grace_minutes: s.grace_minutes,
+      working_days: s.working_days,
+    })
+    if (s.sat_start_time) {
+      setSatOverride(true)
+      setSatForm({
+        sat_start_time: s.sat_start_time.slice(0, 5),
+        sat_end_time: s.sat_end_time ? s.sat_end_time.slice(0, 5) : '17:00',
+        sat_work_hours: s.sat_work_hours ?? 6,
+      })
+    } else {
       setSatOverride(false)
-      setSatForm({ sat_start_time: '10:00', sat_end_time: '17:00', sat_work_hours: 6 })
+      setSatForm(emptySatForm)
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const save = async () => {
+    if (!form.name) return
+    const payload = satOverride
+      ? { ...form, ...satForm }
+      : { ...form, clear_sat_override: true }
+    try {
+      if (editingId) {
+        await shiftAPI.update(editingId, payload)
+        toast.success('Shift updated')
+      } else {
+        await shiftAPI.create(payload)
+        toast.success('Shift added')
+      }
+      resetForm()
       refetch()
-      toast.success('Shift added')
     }
     catch { toast.error('Failed') }
   }
   const del = async (id) => {
-    try { await shiftAPI.delete(id); refetch(); toast.success('Deleted') }
+    try { await shiftAPI.delete(id); if (editingId === id) resetForm(); refetch(); toast.success('Deleted') }
     catch { toast.error('Cannot delete — employees assigned') }
   }
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5">
-      <h2 className="font-medium text-gray-900 mb-4">Shifts</h2>
+      <h2 className="font-medium text-gray-900 mb-4">{editingId ? 'Edit Shift' : 'Shifts'}</h2>
       <div className="grid grid-cols-2 gap-3 mb-4">
         {[
           { label: 'Shift name', key: 'name', type: 'text', placeholder: 'Morning Shift' },
@@ -941,18 +978,28 @@ function ShiftSettings() {
         </div>
       )}
 
-      <button onClick={add} className="mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">+ Add Shift</button>
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={save} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+          {editingId ? 'Update Shift' : '+ Add Shift'}
+        </button>
+        {editingId && (
+          <button onClick={resetForm} className="px-4 py-2 text-gray-600 text-sm font-medium hover:text-gray-900">
+            Cancel
+          </button>
+        )}
+      </div>
+
       <div className="space-y-2">
         {shifts.map(s => (
-          <div key={s.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-900">{s.name}</p>
+          <div key={s.id} className={`flex items-center justify-between p-3 rounded-lg ${editingId === s.id ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-gray-50'}`}>
+            <button onClick={() => startEdit(s)} className="text-left flex-1">
+              <p className="text-sm font-medium text-gray-900 hover:text-blue-600">{s.name}</p>
               <p className="text-xs text-gray-500">{s.start_time} – {s.end_time} · {s.working_days} · {s.grace_minutes}min grace</p>
               {s.sat_start_time && (
                 <p className="text-xs text-blue-600 mt-0.5">Sat: {s.sat_start_time} – {s.sat_end_time} · {s.sat_work_hours}h required</p>
               )}
-            </div>
-            <button onClick={() => del(s.id)} className="text-xs text-red-500 hover:text-red-700">Delete</button>
+            </button>
+            <button onClick={() => del(s.id)} className="text-xs text-red-500 hover:text-red-700 ml-3">Delete</button>
           </div>
         ))}
       </div>
