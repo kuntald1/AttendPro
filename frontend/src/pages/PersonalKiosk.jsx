@@ -17,6 +17,7 @@ export default function PersonalKiosk() {
   const [scanMessage, setScanMessage] = useState('')
   const [coords, setCoords] = useState(null)
   const [locationError, setLocationError] = useState('')
+  const coordsRef = useRef(null)
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -26,7 +27,9 @@ export default function PersonalKiosk() {
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const accuracy = pos.coords.accuracy // meters
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy })
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy }
+        setCoords(next)
+        coordsRef.current = next
         if (accuracy > 150) {
           setLocationError('Your location accuracy is low (±' + Math.round(accuracy) + 'm). Please choose "Precise location" when your browser asks for GPS permission, not "Approximate."')
         } else {
@@ -35,6 +38,7 @@ export default function PersonalKiosk() {
       },
       (err) => {
         setCoords(null)
+        coordsRef.current = null
         if (err.code === err.PERMISSION_DENIED) {
           setLocationError('Location access denied. Please allow location permission in your browser and reload this page.')
         } else {
@@ -79,7 +83,7 @@ export default function PersonalKiosk() {
       canvas.height = videoRef.current.videoHeight
       canvas.getContext('2d').drawImage(videoRef.current, 0, 0)
       const image = canvas.toDataURL('image/jpeg', 0.8)
-      const res = await attendanceAPI.recognizePersonal(image, coords?.lat ?? null, coords?.lng ?? null)
+      const res = await attendanceAPI.recognizePersonal(image, coordsRef.current?.lat ?? null, coordsRef.current?.lng ?? null)
       const data = res.data
       if (data.success) {
         setResult(data); setScanMessage('')
@@ -107,7 +111,7 @@ export default function PersonalKiosk() {
       clearTimeout(resetRef.current)
       resetRef.current = setTimeout(() => setScanMessage(''), 4000)
     } finally { setScanning(false) }
-  }, [scanning, coords])
+  }, [scanning])
 
   useEffect(() => {
     if (cameraReady) intervalRef.current = setInterval(captureAndRecognize, SCAN_INTERVAL)
