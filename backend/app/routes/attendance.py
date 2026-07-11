@@ -4,6 +4,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date, datetime
+import logging
 from app.core.database import get_db
 from app.core.security import get_current_user, require_roles
 from app.models.user import Employee, AttendanceLog, StatusEnum, MarkMethodEnum, ScanLog
@@ -11,6 +12,7 @@ from app.schemas.schemas import AttendanceLogOut, ManualAttendanceCreate, Dashbo
 from app.services.face_service import face_service
 from app.core.shift_utils import get_effective_shift_times, get_effective_work_hours
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 
 
@@ -426,7 +428,9 @@ async def recognize_face_personal(
             best_match = emp
 
     if best_match is None or best_score < THRESHOLD:
+        logger.info(f"Personal kiosk: no match above threshold (best_score={best_score:.3f}, threshold={THRESHOLD}, closest={best_match.employee_code if best_match else 'none'})")
         return {"success": False, "message": f"Face not recognised. Please look directly at the camera."}
+    logger.info(f"Personal kiosk: matched {best_match.employee_code} (score={best_score:.3f}, threshold={THRESHOLD})")
 
     # Check kiosk_access for this employee
     office_result = await db.execute(
